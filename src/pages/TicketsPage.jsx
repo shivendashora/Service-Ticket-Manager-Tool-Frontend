@@ -120,7 +120,7 @@ const TicketsPage = () => {
 
       {!isAdmin && <AgentNotice />}
 
-      <div className="panel panel-flush">
+      <div className="list-section">
         <div className="toolbar">
           <div className="tabs" role="tablist">
             {[{ value: 'all', label: 'All' }, ...STATUSES].map((s) => (

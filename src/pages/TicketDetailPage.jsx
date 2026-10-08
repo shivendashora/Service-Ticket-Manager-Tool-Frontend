@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faArrowLeft,
-  faArrowUpRightFromSquare,
+  faCloudArrowUp,
   faImage,
   faLink,
   faPaperclip,
@@ -13,17 +13,17 @@ import {
   faUserPlus,
   faXmark,
 } from '@fortawesome/free-solid-svg-icons';
-import { attachmentUrl, ticketsApi } from '../api/client';
+import { ticketsApi } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { useUsers } from '../hooks/useUsers';
 import AssignModal from '../components/AssignModal';
+import AttachmentGallery from '../components/AttachmentGallery';
 import AttachmentPicker, { validateAttachments } from '../components/AttachmentPicker';
 import TicketFormModal from '../components/TicketFormModal';
 import { Avatar, ConfirmDialog, EmptyState, Modal, Spinner, StatusBadge } from '../components/ui';
 import {
   STATUSES,
-  formatBytes,
   formatDateTime,
   formatHours,
   ticketCode,
@@ -86,7 +86,6 @@ const TicketDetailPage = () => {
   const [notFound, setNotFound] = useState(false);
   const [statusSaving, setStatusSaving] = useState(null);
   const [dialog, setDialog] = useState(null);
-  const [preview, setPreview] = useState(null);
 
   const load = useCallback(async () => {
     try {
@@ -191,9 +190,40 @@ const TicketDetailPage = () => {
         )}
       </header>
 
+      <section className="detail-section detail-section-wide">
+        <header className="panel-header">
+          <h2>
+            Attachments <span className="count-pill">{ticket.attachments.length}</span>
+          </h2>
+          {isAdmin && (
+            <button className="btn btn-secondary btn-sm" onClick={() => setDialog({ type: 'attach' })}>
+              <FontAwesomeIcon icon={faPlus} />
+              Add
+            </button>
+          )}
+        </header>
+        {ticket.attachments.length === 0 ? (
+          isAdmin ? (
+            <button className="attach-empty" onClick={() => setDialog({ type: 'attach' })}>
+              <FontAwesomeIcon icon={faCloudArrowUp} className="dropzone-icon" />
+              <strong>Add images or links</strong>
+              <span className="muted small">Screenshots and related pages help whoever works on this ticket.</span>
+            </button>
+          ) : (
+            <p className="muted small panel-note">No images or links attached.</p>
+          )
+        ) : (
+          <AttachmentGallery
+            attachments={ticket.attachments}
+            canRemove={isAdmin}
+            onRemove={(attachment) => setDialog({ type: 'remove-attachment', attachment })}
+          />
+        )}
+      </section>
+
       <div className="detail-grid">
-        <div className="stack">
-          <section className="panel">
+        <div className="detail-main">
+          <section className="detail-section">
             <header className="panel-header">
               <h2>Status</h2>
             </header>
@@ -214,83 +244,16 @@ const TicketDetailPage = () => {
             </div>
           </section>
 
-          <section className="panel">
+          <section className="detail-section">
             <header className="panel-header">
               <h2>Description</h2>
             </header>
             <p className="description">{ticket.description}</p>
           </section>
-
-          <section className="panel">
-            <header className="panel-header">
-              <h2>
-                Attachments <span className="count-pill">{ticket.attachments.length}</span>
-              </h2>
-              {isAdmin && (
-                <button className="btn btn-secondary btn-sm" onClick={() => setDialog({ type: 'attach' })}>
-                  <FontAwesomeIcon icon={faPlus} />
-                  Add
-                </button>
-              )}
-            </header>
-
-            {ticket.attachments.length === 0 ? (
-              <p className="muted small panel-note">No images or links attached.</p>
-            ) : (
-              <>
-                {images.length > 0 && (
-                  <div className="thumb-grid">
-                    {images.map((a) => (
-                      <figure key={a.id} className="thumb">
-                        <button className="thumb-open" onClick={() => setPreview(a)} aria-label={`Open ${a.file_name}`}>
-                          <img src={attachmentUrl(a)} alt={a.file_name} loading="lazy" />
-                        </button>
-                        <figcaption>
-                          <span className="truncate">{a.file_name}</span>
-                          <span className="muted small">{formatBytes(a.size)}</span>
-                        </figcaption>
-                        {isAdmin && (
-                          <button
-                            className="thumb-remove"
-                            onClick={() => setDialog({ type: 'remove-attachment', attachment: a })}
-                            aria-label={`Remove ${a.file_name}`}
-                          >
-                            <FontAwesomeIcon icon={faXmark} />
-                          </button>
-                        )}
-                      </figure>
-                    ))}
-                  </div>
-                )}
-                {links.length > 0 && (
-                  <ul className="link-list">
-                    {links.map((a) => (
-                      <li key={a.id}>
-                        <FontAwesomeIcon icon={faLink} className="muted" />
-                        <a href={a.url} target="_blank" rel="noopener noreferrer" className="truncate">
-                          {a.url}
-                        </a>
-                        <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="muted small" />
-                        {isAdmin && (
-                          <button
-                            className="icon-btn icon-btn-sm"
-                            onClick={() => setDialog({ type: 'remove-attachment', attachment: a })}
-                            aria-label="Remove link"
-                          >
-                            <FontAwesomeIcon icon={faXmark} />
-                          </button>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </>
-            )}
-          </section>
         </div>
 
-        <aside className="stack">
-          <section className="panel">
+        <aside className="detail-sidebar">
+          <section className="detail-section">
             <header className="panel-header">
               <h2>Details</h2>
             </header>
@@ -312,7 +275,7 @@ const TicketDetailPage = () => {
             </dl>
           </section>
 
-          <section className="panel">
+          <section className="detail-section">
             <header className="panel-header">
               <h2>Assignees</h2>
               {isAdmin && (
@@ -434,26 +397,6 @@ const TicketDetailPage = () => {
         />
       )}
 
-      {preview && (
-        <div className="lightbox" onClick={() => setPreview(null)}>
-          <img src={attachmentUrl(preview)} alt={preview.file_name} />
-          <div className="lightbox-bar">
-            <span className="truncate">{preview.file_name}</span>
-            <a
-              href={attachmentUrl(preview)}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="btn btn-sm btn-ghost-light"
-            >
-              <FontAwesomeIcon icon={faArrowUpRightFromSquare} /> Open
-            </a>
-            <button className="icon-btn icon-btn-light" aria-label="Close preview">
-              <FontAwesomeIcon icon={faXmark} />
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
