@@ -1,27 +1,37 @@
-import React from 'react';
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
-import Login from './components/Login';
-import Customer from './components/Customer';
-import Ticket from './components/Ticket';
-import ViewTicket from './components/Viewticket';
-import Support from './components/support';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { ToastProvider } from './context/ToastContext';
+import ProtectedRoute from './components/ProtectedRoute';
+import AppLayout from './components/AppLayout';
+import LoginPage from './pages/LoginPage';
+import DashboardPage from './pages/DashboardPage';
+import TicketsPage from './pages/TicketsPage';
+import TicketDetailPage from './pages/TicketDetailPage';
+import NewTicketPage from './pages/NewTicketPage';
+import UsersPage from './pages/UsersPage';
 
-const App = () => {
-  return (
+const App = () => (
+  <ToastProvider>
     <AuthProvider>
-      <Router>
+      <BrowserRouter>
         <Routes>
-          <Route path="/customer" element={<Customer />} />
-          <Route path="/ticket" element={<Ticket />} />
-          <Route path="/viewtickets" element={<ViewTicket />} />
-          <Route path="/support" element={<Support />} />
-          <Route path="/" element={<Login />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route element={<ProtectedRoute />}>
+            <Route element={<AppLayout />}>
+              <Route index element={<DashboardPage />} />
+              <Route path="tickets" element={<TicketsPage />} />
+              <Route path="tickets/:id" element={<TicketDetailPage />} />
+              <Route element={<ProtectedRoute adminOnly />}>
+                <Route path="tickets/new" element={<NewTicketPage />} />
+                <Route path="users" element={<UsersPage />} />
+              </Route>
+            </Route>
+          </Route>
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-      </Router>
+      </BrowserRouter>
     </AuthProvider>
-  );
-};
+  </ToastProvider>
+);
 
 export default App;
-
